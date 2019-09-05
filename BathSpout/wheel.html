@@ -1,0 +1,205 @@
+<html>
+<head>
+    <style>
+    body {
+        text-align: center;
+        margin: auto;
+    }
+    #container {
+        margin: auto;
+        background: lightgray;
+        width: 50vw;
+        height: 50vw;
+    }
+    #scale {
+        height: 20%;
+        position: relative;
+    }
+    #wheel {
+        margin: auto;
+        height: 60%;
+        width: 60%;
+        background: gray;
+        border-radius: 50%;
+        position: relative;
+        left: 2.25%;
+        top: -20%;
+        opacity: 0;
+    }
+    #scale div {
+        width: 10px;
+        height: 20px;
+        background: black;
+        position: absolute;
+    }
+    #one {
+        transform: rotate(90deg);
+        right: 5%;
+        top: 290%;
+    }
+    #ten {
+        transform: rotate(90deg);
+        left: 5%;
+        top: 290%;
+    }
+    #two {
+        transform: rotate(70deg);
+        right: 8%;
+        top: 217%;
+    }
+    #three {
+        transform: rotate(50deg);
+        right: 17%;
+        top: 147%;
+    }
+    #four {
+        transform: rotate(30deg);
+        right: 30%;
+        top: 100%;
+    }
+    #five {
+        transform: rotate(10deg);
+        right: 42%;
+        top: 70%;
+    }
+    #six {
+        transform: rotate(110deg);
+        left: 8%;
+        top: 217%;
+    }
+    #seven {
+        transform: rotate(130deg);
+        left: 17%;
+        top: 147%;
+    }
+    #eight {
+        transform: rotate(150deg);
+        left: 30%;
+        top: 100%;
+    }
+    #nine {
+        transform: rotate(170deg);
+        left: 42%;
+        top: 70%;
+    }
+    #cursor {
+        width: 0;
+        height: 0;
+        border-left: 20px solid transparent;
+        border-right: 20px solid transparent;
+        border-top: 20px solid green;
+        transform: rotate(90deg);
+        left: 2.5%;
+        top: 50%;
+        position: absolute;
+        opacity: 0;
+    }
+    </style>
+</head>
+<body>
+<div id="container">
+    <div id="scale">
+        <!-- <div id="one"></div>
+        <div id="two"></div>
+        <div id="three"></div>
+        <div id="four"></div>
+        <div id="five"></div>
+        <div id="six"></div>
+        <div id="seven"></div>
+        <div id="eight"></div>
+        <div id="nine"></div>
+        <div id="ten"></div> -->
+    </div>
+    <div id="wheel">
+        <div id="cursor"></div>
+    </div>
+    <audio id="runningwater" style="display:none;" loop>
+        <source src="runningwater.mp3" type="audio/wav" />
+     </audio>
+</div>
+<script type='text/javascript'>
+    (function(){
+        var steps = [Math.PI,2.76,2.40,2.04,1.73,1.42,1.11,0.75,0.39,0];
+        var wheel = document.getElementById("wheel");
+        var cursor = document.getElementById("cursor");
+        var container = document.getElementById("container");
+        container.style['background-image'] = "url('bathspout1.png')";
+        container.style['background-repeat'] = "round";
+        container.style['background-size'] = "100% 100%";
+        var cursorRad = Math.PI;
+        var previousX = 0, previousY = 0;
+        var previousRadDiff = 0;
+        var clicking = false;
+        Array.prototype.getClosest = function(value){
+            let va = Number(value);
+            if (isNaN(va))
+                return NaN;
+            let a = this.filter(v=>!isNaN(Number(v)));            
+            if (a.length==0)
+                return NaN;
+            let diff = Math.max(...a.map(v=>Math.abs(va-Number(v)))), n = 0;
+            for (let i = 0; i < a.length; i++){
+                let d = Math.abs(va-Number(a[i]));
+                if (d <= diff){
+                    diff = d;
+                    n = i;
+                }
+            }
+            return {angle: a[n], index: n};
+        }
+        var complementRad = function(rad){
+            if (rad > 0)
+                return rad - 2*Math.PI;
+            else if (rad < 0)
+                return 2*Math.PI + rad;
+            else
+                return 0;
+        }
+        var update = function(e){
+            var dims = wheel.getBoundingClientRect();
+            dims.halfWidth = dims.width/2;
+            dims.halfHeight = dims.height/2;
+            var centerX = dims.left + dims.halfWidth;
+                centerY = dims.top + dims.halfHeight;
+            var xTo = e.clientX - centerX,
+                yTo = e.clientY - centerY;
+            var xFrom = previousX - centerX,
+                yFrom = previousY - centerY;
+            var radTo = Math.atan2(yTo,xTo);
+            var radFrom = Math.atan2(yFrom,xFrom);
+            var radDiff = radTo - radFrom;
+            if ((radDiff > Math.PI && previousRadDiff <= 0) || (radDiff < -1*Math.PI && previousRadDiff >= 0))
+                radDiff = complementRad(radTo) - radFrom;
+            previousRadDiff = radDiff;
+            cursorRad -= radDiff;
+            if (cursorRad < 0)
+                cursorRad = 0;
+            else if (cursorRad > Math.PI)
+                cursorRad = Math.PI;
+            let visualRad = steps.getClosest(cursorRad);
+            // cursor.style.left = (dims.halfWidth + Math.cos(visualRad.angle) * 0.8 * dims.halfWidth - cursor.offsetWidth / 2)+"px";
+            // cursor.style.top = (dims.halfHeight - Math.sin(visualRad.angle) * 0.8 * dims.halfHeight)+"px";
+            // cursor.style.transform = "rotate("+(270 - visualRad.angle * (180 / Math.PI))+"deg)";
+            container.style['background-image'] = "url('bathspout"+Number(visualRad.index+1)+".png')";
+            previousX = e.clientX;
+            previousY = e.clientY;
+        };
+        document.body.onmousemove = function(e){
+            if (clicking)
+                update(e);
+        }
+        document.onmouseup = function(){
+            clicking = false;
+            cursorRad = steps.getClosest(cursorRad).angle;
+        };
+        wheel.onmousedown = function(e){
+            document.getElementById("runningwater").play();
+            clicking = true;
+            previousX = e.clientX;
+            previousY = e.clientY;
+        };
+        update({clientX: 0, clientY: 0});
+    })();
+</script>
+</body>
+</html>
