@@ -1,0 +1,18 @@
+.Tooltip {
+    padding: 5px 5px 20px;
+    border: solid 1px darkgoldenrod;
+    border-radius: 5px;
+    opacity: 0.95;
+    pointer-events: none;
+}
+
+.Tooltip a {
+    font-style: italic;
+    font-variant: small-caps;
+    font-size: 0.9em;
+    border: none;
+}
+
+.container-container {
+    outline: solid 3px lightgray;
+}

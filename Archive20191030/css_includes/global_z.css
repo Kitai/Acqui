@@ -1,0 +1,111 @@
+@keyframes up {
+  0% {
+  opacity: 0;
+  }
+  10%, 90% {
+  opacity: 1;
+  }
+  100% {
+  opacity: 0;
+  transform: translateY(-200px);
+  }
+}
+
+.bubbles-large > g {
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: up 3s infinite;
+}
+
+
+
+@keyframes sfx1 {
+  0% {opacity: 0;}
+  10% {opacity: 1;}
+  15% {opacity: 1;transform: scale(2,2);}
+  90% {opacity: 1;transform: scale(2,2);}
+  100% {opacity: 0;transform: scale(2,2);}
+}
+.sfx1 { width: 5px; height: 5px; background: black; border-radius: 2.5px; opacity: 0; will-change: transform, opacity; animation: sfx1 0.75s; }
+
+
+@keyframes sfx2 {
+  0% {opacity: 0;}
+  15% {opacity: 1;}
+  20% {opacity: 1;transform: scale(2,2);}
+  80% {opacity: 1;transform: scale(2,2);}
+  100% {opacity: 0;transform: scale(2,2);}
+}
+.sfx2 { width: 7.5px; height: 7.5px; background: black; border-radius: 3.75px; opacity: 0; will-change: transform, opacity; animation: sfx2 0.75s; }
+
+
+@keyframes sfx3 {
+  0% {opacity: 0;}
+  20% {opacity: 1;}
+  25% {opacity: 1;transform: scale(2,2);}
+  70% {opacity: 1;transform: scale(2,2);}
+  100% {opacity: 0;transform: scale(2,2);}
+}
+.sfx3 { width: 10px; height: 10px; background: black; border-radius: 5px; opacity: 0; will-change: transform, opacity; animation: sfx3 0.75s; }
+
+
+@keyframes sfx4 {
+  0% {opacity: 0;}
+  25% {opacity: 1;}
+  30% {opacity: 1;transform: scale(2,2);}
+  60% {opacity: 1;transform: scale(2,2);}
+  100% {opacity: 0;transform: scale(2,2);}
+}
+.sfx4 { width: 12.5px; height: 12.5px; background: black; border-radius: 6.25px; opacity: 0; will-change: transform, opacity; animation: sfx4 0.75s; }
+
+
+@keyframes sfx5 {
+  0% {opacity: 0;}
+  30% {opacity: 1;}
+  35% {opacity: 1;transform: scale(2,2);}
+  50% {opacity: 1;transform: scale(2,2);}
+  100% {opacity: 0;transform: scale(2,2);}
+}
+.sfx5 { width: 15px; height: 15px; background: black; border-radius: 7.5px; opacity: 0; will-change: transform, opacity; animation: sfx5 0.75s; }
+
+
+@keyframes sfx6 {
+  0% {opacity: 0;}
+  35% {opacity: 1;}
+  40% {opacity: 1;transform: scale(2,2);}
+  40% {opacity: 1;transform: scale(2,2);}
+  100% {opacity: 0;transform: scale(2,2);}
+}
+.sfx6 { width: 17.5px; height: 17.5px; background: black; border-radius: 8.75px; opacity: 0; will-change: transform, opacity; animation: sfx6 0.75s; }
+
+
+@keyframes sfx7 {
+  0% {opacity: 0;}
+  40% {opacity: 0.70;}
+  100% {opacity: 0;transform: scale(2,2);}
+}
+.sfx7 { width: 20px; height: 20px; background: black; border-radius: 10px; opacity: 0; will-change: transform, opacity; animation: sfx7 0.75s; }
+
+
+@keyframes sfx8 {
+  0% {opacity: 0;}
+  45% {opacity: 0.50;}
+  100% {opacity: 0;transform: scale(2,2);}
+}
+.sfx8 { width: 22.5px; height: 22.5px; background: black; border-radius: 11.25px; opacity: 0; will-change: transform, opacity; animation: sfx8 0.75s; }
+
+
+@keyframes sfx9 {
+  0% {opacity: 0;}
+  50% {opacity: 0.40;}
+  100% {opacity: 0;transform: scale(2,2);}
+}
+.sfx9 { width: 25px; height: 25px; background: black; border-radius: 12.5px; opacity: 0; will-change: transform, opacity; animation: sfx9 0.75s; }
+
+
+@keyframes sfx10 {
+  0% {opacity: 0;}
+  50% {opacity: 0.25;}
+  100% {opacity: 0;transform: scale(2,2);}
+}
+.sfx10 { width: 27.5px; height: 27.5px; background: black; border-radius: 13.75px; opacity: 0; will-change: transform, opacity; animation: sfx10 0.75s; }
