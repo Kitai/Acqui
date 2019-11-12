@@ -1,0 +1,186 @@
+---
+title: "Analyses Pilot"
+author: "Jeremy Zehr"
+date: "11/12/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(lme4)
+library(ggplot2)
+
+read.pcibex <- function(filepath, auto.colnames=TRUE, fun.col=function(col,cols){cols[cols==col]<-paste(col,"Ibex",sep=".");return(cols)}) {
+  n.cols <- max(count.fields(filepath,sep=",",quote=NULL),na.rm=TRUE)
+  if (auto.colnames){
+    cols <- c()
+    con <- file(filepath, "r")
+    while ( TRUE ) {
+      line <- readLines(con, n = 1, warn=FALSE)
+      if ( length(line) == 0) {
+        break
+      }
+      m <- regmatches(line,regexec("^# (\\d+)\\. (.+)\\.$",line))[[1]]
+      if (length(m) == 3) {
+        index <- as.numeric(m[2])
+        value <- m[3]
+        if (index < length(cols)){
+          cols <- c()
+        }
+        if (is.function(fun.col)){
+          cols <- fun.col(value,cols)
+        }
+        cols[index] <- value
+        if (index == n.cols){
+          break
+        }
+      }
+    }
+    close(con)
+    return(read.csv(filepath, comment.char="#", header=FALSE, col.names=cols))
+  }
+  else{
+    return(read.csv(filepath, comment.char="#", header=FALSE, col.names=seq(1:n.cols)))
+  }
+}
+```
+
+## Preparations and General observations
+
+Reading the table, and making sure EventTime is numeric (important column)
+
+```{r reading}
+df.all <- read.pcibex("results40ppts.csv")
+
+df.all$EventTime <- as.numeric(as.character(df.all$EventTime))
+```
+
+How long did each participant take?
+```{r completion times}
+df.all %>% group_by(id) %>% summarise(duration = (max(EventTime, na.rm=TRUE) - min(EventTime, na.rm=TRUE))/60000)
+```
+
+Preparing df.trials
+```{r df.trials}
+df.trials <- subset(df.all, grepl("input|practice", Type) & PennElementType%in%c("Scale","Var"))
+
+# Forgot to log Dimension, adding it based on Item number:
+dim.temp <- data.frame(Item.number=c(4:7,27:28), Dimension="Temperature", Nonce=FALSE)
+dim.light <- data.frame(Item.number=c(8:11,29:30), Dimension="Light", Nonce=FALSE)
+dim.sound <- data.frame(Item.number=c(12:15,31:32), Dimension="Sound", Nonce=TRUE)
+dim.angle <- data.frame(Item.number=c(16:19,33:34), Dimension="Angle", Nonce=TRUE)
+df.dim <- rbind(dim.temp,dim.light,dim.sound,dim.angle)
+df.trials <- merge(df.trials,df.dim)
+```
+
+Focusing on input (leaving practice aside)
+```{r df.input}
+df.input <- df.trials %>% 
+  filter(grepl("input", Type) & PennElementType=="Scale") %>%
+  group_by(id, Dimension, Form, Force) %>%
+  select(id,EventTime,Value,Dimension,Form,Force,Tested,Level,Nonce) %>%
+  arrange(EventTime)
+```
+
+Did participants change direction while setting the dial?
+```{r Hesitation}
+serialdifference <- function(t){
+  t<-as.numeric(as.character(t))
+  return(t-c(t[1],t[1:(length(t)-1)]))
+}
+
+df.input <- df.input %>% mutate(ValueDiff=serialdifference(Value)) %>% mutate(ConstantChange=all(ValueDiff<=0)|all(ValueDiff>=0))
+
+summary((df.input %>% group_by(id) %>% summarise(overall=mean(ConstantChange)))$overall)
+df.input %>% group_by(Dimension) %>% summarise(overall=mean(ConstantChange)) %>% arrange(overall)
+df.input %>% group_by(Dimension, Form, Force) %>% summarise(overall=mean(ConstantChange)) %>% arrange(overall)
+```
+
+Final values on trials
+```{r finalvalues}
+df.input.final <- df.input %>% filter(EventTime == max(EventTime))
+df.input.final$Value <- as.numeric(as.character(df.input.final$Value))
+
+df.input.final$Increase <- df.input.final$Value > df.input.final$Level
+df.input.final$Decrease <- df.input.final$Value < df.input.final$Level
+# AdjustedIncrease == !Increase for mid-light (dim) and mid-angle; else == Increase
+df.input.final$AdjustedIncrease <- df.input.final$Increase
+midsoundangle <- df.input.final$Force=="Mid"&(df.input.final$Dimension=="Light"|df.input.final$Dimension=="Angle")
+df.input.final$AdjustedIncrease[midsoundangle] <- (df.input.final$Increase[midsoundangle]|df.input.final$Decrease[midsoundangle])&!df.input.final$Increase[midsoundangle]
+```
+
+For each adjective (and each participant), IncreaseDiff = 
+    1     if    Increase on comparative  &  Decrease on excessive
+   -1     if    Decrease on comparative  &  Increase on excessive
+    0     if    Same on comparative  &  excessive
+```{r increasediff}
+df.input.final <- df.input.final %>% group_by(id,Dimension,Force) %>% arrange(Form) %>%                                 mutate(IncreaseDiff=rep(0-diff(Increase),2),AdjIncreaseDiff=rep(0-diff(AdjustedIncrease),2))
+```
+
+## Stats
+
+Did every participant change the dial's value on every trial?
+```{r inertia}
+all(df.input.final$Increase|df.input.final$Decrease)
+```
+
+How many participants increased in each conditions?
+```{r}
+df.input.final %>% 
+  group_by(Dimension, Form, Force) %>%
+  summarise( NIncrease=sum(Increase) , N = length(Increase) )
+```
+
+Logistic model predicting (adjusted) increase from Force (mid v max) and Form (comp v exc)
+```{r model}
+df.input.final$id <- factor(df.input.final$id)
+df.input.final$Form <- relevel(df.input.final$Form, "excessive")
+df.input.final$Force <- relevel(df.input.final$Force, "Mid")
+# Adding random structure for id wouldn't converge
+md.all <- glmer(AdjustedIncrease ~ Form * Force + (1|Dimension), 
+                family="binomial",control=glmerControl(optimizer="bobyqa"), data=df.input.final)
+summary(md.all)
+```
+Global stats support the truly-central hypothesis
+
+## Plots
+
+General plot, by force (mid v max) and by form (comp v exc)
+```{r generalplot}
+ggplot(df.input.final %>% group_by(Force, Form) %>% summarise(AdjIncreaseProp = sum(AdjustedIncrease)/length(AdjustedIncrease), AdjIncreaseDiffProp = sum(AdjIncreaseDiff)/length(AdjIncreaseDiff))) +
+  geom_bar(aes(x=Force, y=AdjIncreaseProp, fill=Form), stat="identity", position="dodge") +
+  geom_bar(aes(x=Force,y=AdjIncreaseDiffProp), width=0.1, stat="identity", position="dodge")
+```
+Global picture is clear for Max (control) but complex for Mid
+
+Real (FALSE) v Nonce (TRUE) adjectives
+```{r plotnonce}
+ggplot(df.input.final %>% group_by(Force, Form, Nonce) %>% summarise(AdjIncreaseProp = sum(AdjustedIncrease)/length(AdjustedIncrease), AdjIncreaseDiffProp = sum(AdjIncreaseDiff)/length(AdjIncreaseDiff))) +
+  geom_bar(aes(x=Force,y=AdjIncreaseProp,fill=Form), stat="identity", position="dodge") +
+  geom_bar(aes(x=Force,y=AdjIncreaseDiffProp), width=0.1, stat="identity", position="dodge") +
+  facet_wrap(~Nonce)
+```
+Clear picture for real adjectives, complex for nonce adjectives
+
+Plotting each adjective separately
+```{r plotsperadjective}
+# Raw Increase
+ggplot(df.input.final %>% group_by(Force, Form, Dimension) %>% summarise(IncreaseProp = sum(Increase)/length(Increase), IncreaseDiffProp = mean(IncreaseDiff))) +
+       geom_bar(aes(x=Force, y=IncreaseProp, fill=Form), stat="identity", position="dodge") +
+       geom_bar(aes(x=Force,y=IncreaseDiffProp), width=0.1, stat="identity", position="dodge") +
+        facet_wrap(~Dimension)
+# Adjusted Increase
+ggplot(df.input.final %>% group_by(Force, Form, Dimension) %>% summarise(AdjIncreaseProp = sum(AdjustedIncrease)/length(AdjustedIncrease), AdjIncreaseDiffProp = mean(AdjIncreaseDiff))) +
+  geom_bar(aes(x=Force, y=AdjIncreaseProp, fill=Form), stat="identity", position="dodge") +
+  geom_bar(aes(x=Force,y=AdjIncreaseDiffProp), width=0.1, stat="identity", position="dodge") +
+  facet_wrap(~Dimension)
+```
+
+Did turning the sound off make a difference?
+```{r plotsoundoff}
+ggplot(merge(df.input.final, df.all %>% filter(PennElementName=="sound") %>% select(id, Value) %>% rename(Sound = Value)) %>% filter(Sound=="off") %>% group_by(Force, Form, Dimension) %>% summarise(AdjIncreaseProp = sum(AdjustedIncrease)/length(AdjustedIncrease), AdjIncreaseDiffProp = mean(AdjIncreaseDiff))) +
+  geom_bar(aes(x=Force, y=AdjIncreaseProp, fill=Form), stat="identity", position="dodge") +
+  geom_bar(aes(x=Force,y=AdjIncreaseDiffProp), width=0.1, stat="identity", position="dodge") +
+  facet_wrap(~Dimension)
+```
+Apparently not!
